@@ -7,11 +7,17 @@ from latch.resources.launch_plan import LaunchPlan
 from latch.types import LatchDir, LatchFile
 
 from .docs import antismash_docs
+from .types import GeneFindingTool, Taxon
 from .utils import _capture_output
 
 
 @medium_task
-def run_antismash(sample_name: str, antismash_input: LatchFile) -> LatchDir:
+def run_antismash(
+    sample_name: str,
+    antismash_input: LatchFile,
+    taxon: Taxon,
+    genefinding_tool: GeneFindingTool,
+) -> LatchDir:
 
     _down_cmd = [
         "download-antismash-databases",
@@ -37,6 +43,10 @@ def run_antismash(sample_name: str, antismash_input: LatchFile) -> LatchDir:
         str(output_dir),
         "--cpus",
         "32",
+        "--genefinding-tool",
+        genefinding_tool.value,
+        "--taxon",
+        taxon.value,
     ]
 
     running_cmd = " ".join(_run_cmd)
@@ -69,7 +79,12 @@ def run_antismash(sample_name: str, antismash_input: LatchFile) -> LatchDir:
 
 
 @workflow(antismash_docs)
-def antismash(sample_name: str, antismash_input: LatchFile) -> LatchDir:
+def antismash(
+    sample_name: str,
+    antismash_input: LatchFile,
+    taxon: Taxon = Taxon.bacteria,
+    genefinding_tool: GeneFindingTool = GeneFindingTool.prodigal,
+) -> LatchDir:
     """The antibiotics and Secondary Metabolite Analysis SHell
 
     antiSMASH
@@ -92,16 +107,33 @@ def antismash(sample_name: str, antismash_input: LatchFile) -> LatchDir:
     return run_antismash(
         sample_name=sample_name,
         antismash_input=antismash_input,
+        taxon=taxon,
+        genefinding_tool=genefinding_tool,
     )
 
 
 LaunchPlan(
     antismash,
-    "Streptomyces coelicolor genome",
+    "Streptomyces coelicolor genome (FASTA format)",
+    {
+        "sample_name": "s_coelicolor",
+        "antismash_input": LatchFile(
+            "s3://latch-public/test-data/4318/s_coelicolor.fasta"
+        ),
+        "taxon": Taxon.bacteria,
+        "genefinding_tool": GeneFindingTool.prodigal,
+    },
+)
+
+LaunchPlan(
+    antismash,
+    "Streptomyces coelicolor genome (GBK format)",
     {
         "sample_name": "s_coelicolor",
         "antismash_input": LatchFile(
             "s3://latch-public/test-data/4318/s_coelicolor.gbk"
         ),
+        "taxon": Taxon.bacteria,
+        "genefinding_tool": GeneFindingTool.none,
     },
 )
